@@ -72,6 +72,7 @@
 				<div class="field">
 					<label>МФО:*</label>
 					<select name="company_slug" id="company_slug" required></select>
+					<input type="hidden" name="company_name" id="company_name" />
 				</div>
 
 				<h3>Подпись и согласие</h3>
@@ -86,7 +87,16 @@
 
 				<div>
 					<button type="button" id="clear">Очистить подпись</button>
-					<button type="submit">Сгенерировать PDF</button>
+					<button type="button" id="prepare">Сформировать заявление</button>
+				</div>
+
+				<div id="progress" style="display:none; margin-top:12px; height:8px; background:#eee; border-radius:4px; overflow:hidden;">
+					<div id="bar" style="width:0; height:100%; background:#4a90e2; transition:width 0.2s;"></div>
+				</div>
+
+				<div id="result" style="display:none; margin-top:12px; gap:8px;">
+					<button type="button" id="viewPdf">Просмотр PDF</button>
+					<button type="button" id="downloadPdf">Скачать PDF</button>
 				</div>
 			</form>
 		</div>
@@ -144,13 +154,53 @@
 			ctx.clearRect(0, 0, canvas.width, canvas.height);
 		});
 
-		document.getElementById('form').addEventListener('submit', (e) => {
+		function serializeForm(form) {
+			const data = new FormData(form);
+			return new URLSearchParams(data).toString();
+		}
+
+		function simulateProgress(cb) {
+			const progress = document.getElementById('progress');
+			const bar = document.getElementById('bar');
+			progress.style.display = 'block';
+			bar.style.width = '0%';
+			let w = 0;
+			const id = setInterval(() => {
+				w = Math.min(95, w + Math.random() * 15);
+				bar.style.width = w + '%';
+			}, 200);
+			return () => { clearInterval(id); bar.style.width = '100%'; setTimeout(cb, 200); };
+		}
+
+		document.getElementById('prepare').addEventListener('click', async () => {
 			if (!document.getElementById('consent').checked) {
-				e.preventDefault();
 				alert('Необходимо согласие на обработку персональных данных');
 				return;
 			}
+			const sel = document.getElementById('company_slug');
+			document.getElementById('company_name').value = sel.options[sel.selectedIndex]?.text || '';
 			document.getElementById('signature_data_url').value = canvas.toDataURL('image/png');
+
+			const done = simulateProgress(() => {
+				document.getElementById('progress').style.display = 'none';
+				document.getElementById('result').style.display = 'flex';
+			});
+
+			const form = document.getElementById('form');
+			const resp = await fetch(form.action, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+				body: serializeForm(form)
+			});
+			const blob = await resp.blob();
+			const url = URL.createObjectURL(blob);
+			const finish = done;
+			finish();
+
+			document.getElementById('viewPdf').onclick = () => { window.open(url, '_blank'); };
+			document.getElementById('downloadPdf').onclick = () => {
+				const a = document.createElement('a'); a.href = url; a.download = 'zayavlenie.pdf'; a.click();
+			};
 		});
 	</script>
 </body>

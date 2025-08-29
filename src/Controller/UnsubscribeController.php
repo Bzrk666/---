@@ -12,14 +12,7 @@ final class UnsubscribeController extends AbstractController
 {
 	public function form(): Response
 	{
-		$companies = [
-			['slug' => 'mfo-example-1', 'name' => 'ООО МФО Пример 1', 'address' => '101000, г. Москва, ул. Примерная, д. 1'],
-			['slug' => 'mfo-example-2', 'name' => 'ООО МФО Пример 2', 'address' => '190000, г. Санкт-Петербург, Невский пр., д. 2'],
-		];
-
-		return $this->render('unsubscribe/form.html.twig', [
-			'companies' => $companies,
-		]);
+		return $this->render('unsubscribe/form.html.twig');
 	}
 
 	public function generate(Request $request): Response
@@ -32,20 +25,12 @@ final class UnsubscribeController extends AbstractController
 		$contractNumber  = trim((string) $request->request->get('contract_number'));
 		$statementDate   = trim((string) $request->request->get('statement_date'));
 		$companySlug     = trim((string) $request->request->get('company_slug'));
+		$companyName     = trim((string) $request->request->get('company_name'));
 		$consent         = (bool) $request->request->get('consent');
 		$signatureDataUrl= (string) $request->request->get('signature_data_url');
 
-		if (!$lastName || !$firstName || !$email || !$phone || !$contractNumber || !$statementDate || !$companySlug || !$consent || !$signatureDataUrl) {
+		if (!$lastName || !$firstName || !$email || !$phone || !$contractNumber || !$statementDate || !$companySlug || !$companyName || !$consent || !$signatureDataUrl) {
 			return new Response('Некорректные данные формы', 400);
-		}
-
-		$companies = [
-			'mfo-example-1' => ['name' => 'ООО МФО Пример 1', 'address' => '101000, г. Москва, ул. Примерная, д. 1'],
-			'mfo-example-2' => ['name' => 'ООО МФО Пример 2', 'address' => '190000, г. Санкт-Петербург, Невский пр., д. 2'],
-		];
-		$company = $companies[$companySlug] ?? null;
-		if (!$company) {
-			return new Response('Неизвестная МФО', 400);
 		}
 
 		if (strpos($signatureDataUrl, 'data:image/png;base64,') !== 0) {
@@ -55,7 +40,7 @@ final class UnsubscribeController extends AbstractController
 		$fullName = trim($lastName . ' ' . $firstName . ' ' . ($middleName ?? ''));
 
 		$html = $this->renderView('unsubscribe/pdf.html.twig', [
-			'company'          => $company,
+			'companyName'      => $companyName,
 			'fullName'         => $fullName,
 			'email'            => $email,
 			'phone'            => $phone,
