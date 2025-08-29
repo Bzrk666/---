@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="ru">
+<head>
+	<meta charset="utf-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1"/>
+	<title>Отписка от платных услуг МФО</title>
+	<style>
+		body { font-family: sans-serif; margin: 0; padding: 24px; display: flex; justify-content: center; }
+		.container { width: 100%; max-width: 560px; }
+		label { display: block; margin-top: 12px; font-weight: 600; }
+		
+		input:not([type="checkbox"]), select {
+			width: 100%;
+			box-sizing: border-box;
+			height: 44px;
+			padding: 10px 12px;
+			font-size: 16px;
+			line-height: 22px;
+			border: 1px solid #ccc;
+			border-radius: 6px;
+			margin-top: 6px;
+			background-color: #fff;
+		}
+		
+		select { appearance: none; -moz-appearance: none; -webkit-appearance: none; }
+		input[type="date"] { appearance: none; -webkit-appearance: none; }
+		
+		input:not([type="checkbox"]):focus, select:focus { outline: none; border-color: #888; box-shadow: 0 0 0 3px rgba(0,0,0,0.08); }
+		
+		input[type="checkbox"] { width: auto; margin: 0; }
+		label.consent { display: flex; align-items: center; gap: 8px; font-weight: normal; margin-top: 16px; }
+		.field { margin-top: 10px; }
+		canvas { border: 1px solid #999; width: 100%; height: 200px; touch-action: none; display: block; }
+		button { margin-top: 16px; padding: 10px 16px; }
+	</style>
+</head>
+	<body>
+		<div class="container">
+			<h1>Отписка от платных услуг МФО</h1>
+			<p>Заполните заявление, выберите МФО, чтобы отписаться от платных услуг и списания денег с карты</p>
+
+			<h3>Данные заявителя</h3>
+			<form id="form" method="post" action="{{ path('unsubscribe_generate') }}">
+				<div class="field">
+					<label>Фамилия:*</label>
+					<input name="last_name" required />
+				</div>
+				<div class="field">
+					<label>Имя:*</label>
+					<input name="first_name" required />
+				</div>
+				<div class="field">
+					<label>Отчество</label>
+					<input name="middle_name" />
+				</div>
+				<div class="field">
+					<label>Email:*</label>
+					<input name="email" type="email" required />
+				</div>
+				<div class="field">
+					<label>Телефон:*</label>
+					<input name="phone_number" required />
+				</div>
+				<div class="field">
+					<label>Номер договора с МФО:*</label>
+					<input name="contract_number" required />
+				</div>
+				<div class="field">
+					<label>Дата заявления:*</label>
+					<input name="statement_date" type="date" required />
+				</div>
+				<div class="field">
+					<label>МФО:*</label>
+					<select name="company_slug" id="company_slug" required></select>
+				</div>
+
+				<h3>Подпись и согласие</h3>
+				<label class="consent">
+					<input type="checkbox" id="consent" name="consent" required />
+					<span>Я согласен на обработку персональных данных и условия использования сервиса*</span>
+				</label>
+
+				<label>Подпись:*</label>
+				<canvas id="sig"></canvas>
+				<input type="hidden" name="signature_data_url" id="signature_data_url" />
+
+				<div>
+					<button type="button" id="clear">Очистить подпись</button>
+					<button type="submit">Сгенерировать PDF</button>
+				</div>
+			</form>
+		</div>
+
+	<script src="/js/mfo.js"></script>
+	<script>
+		const canvas = document.getElementById('sig');
+		const ctx = canvas.getContext('2d');
+		ctx.lineWidth = 2;
+		ctx.lineCap = 'round';
+
+		// Size canvas to CSS pixels with high-DPI support
+		function setupCanvas() {
+			const dpr = window.devicePixelRatio || 1;
+			const cssWidth = canvas.clientWidth || 560;
+			const cssHeight = 200; // fixed visual height
+			canvas.style.width = cssWidth + 'px';
+			canvas.style.height = cssHeight + 'px';
+			canvas.width = Math.floor(cssWidth * dpr);
+			canvas.height = Math.floor(cssHeight * dpr);
+			ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+		}
+		setupCanvas();
+		window.addEventListener('resize', setupCanvas);
+
+		let drawing = false;
+
+		function getPos(e) {
+			const r = canvas.getBoundingClientRect();
+			const scaleX = canvas.width / r.width;
+			const scaleY = canvas.height / r.height;
+			let clientX, clientY;
+			if (e.touches && e.touches[0]) {
+				clientX = e.touches[0].clientX; clientY = e.touches[0].clientY;
+			} else {
+				clientX = e.clientX; clientY = e.clientY;
+			}
+			return { x: (clientX - r.left) * (1), y: (clientY - r.top) * (1) };
+		}
+
+		const start = (e) => { drawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); };
+		const move  = (e) => { if (!drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); };
+		const end   = () => { drawing = false; };
+
+		canvas.addEventListener('mousedown', start);
+		canvas.addEventListener('mousemove', move);
+		canvas.addEventListener('mouseup', end);
+		canvas.addEventListener('mouseleave', end);
+
+		canvas.addEventListener('touchstart', (e) => { e.preventDefault(); start(e); });
+		canvas.addEventListener('touchmove', (e) => { e.preventDefault(); move(e); });
+		canvas.addEventListener('touchend', (e) => { e.preventDefault(); end(e); });
+
+		document.getElementById('clear').addEventListener('click', () => {
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+		});
+
+		document.getElementById('form').addEventListener('submit', (e) => {
+			if (!document.getElementById('consent').checked) {
+				e.preventDefault();
+				alert('Необходимо согласие на обработку персональных данных');
+				return;
+			}
+			document.getElementById('signature_data_url').value = canvas.toDataURL('image/png');
+		});
+	</script>
+</body>
+</html>
+
+

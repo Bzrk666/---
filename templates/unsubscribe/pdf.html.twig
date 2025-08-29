@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ru">
+<head>
+	<meta charset="utf-8"/>
+	<style>
+		body { font-family: DejaVu Sans, sans-serif; font-size: 12px; }
+		.muted { color: #666; }
+		.section { margin-top: 16px; }
+	</style>
+</head>
+<body>
+	<div>В {{ company.name }}</div>
+	<div class="muted">Адрес: {{ company.address ?? '' }}</div>
+	<div class="section"><strong>Заявление об отказе от платных услуг</strong></div>
+
+	<div class="section">
+		Я, {{ fullName }}, прошу прекратить оказание платных услуг и списание средств.<br/>
+		Номер договора: {{ contractNumber }}<br/>
+		Дата заявления: {{ statementDate }}<br/>
+		Телефон: {{ phone }}  Email: {{ email }}<br/>
+		Согласие на обработку персональных данных дано.
+	</div>
+
+	<div class="section">Подпись:</div>
+	<div class="section">
+		<img src="{{ signatureDataUrl }}" alt="Подпись" style="width:240px;"/>
+	</div>
+</body>
+</html>
+
+
+

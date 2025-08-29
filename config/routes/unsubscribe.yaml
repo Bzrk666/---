@@ -1,0 +1,11 @@
+unsubscribe_form:
+  path: /mfo/unsubscribe
+  controller: App\Controller\UnsubscribeController::form
+
+unsubscribe_generate:
+  path: /mfo/unsubscribe/generate
+  controller: App\Controller\UnsubscribeController::generate
+  methods: [POST]
+
+
+
